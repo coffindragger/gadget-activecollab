@@ -1,0 +1,31 @@
+section.leader {
+    clear: both;
+    margin: 6px;
+}
+div.avatar {
+    padding-top: 6px;
+}
+.avatar {
+    float: left;
+    width: 40px;
+    height: 40px;
+    font-size: 10px;
+    text-align: center;
+}
+.bars {
+    float: left;
+    margin-left: 6px;
+    padding-top: 5px;
+}
+.created, .updated, .completed {
+    height: 10px;
+}
+.created {
+    background: red;
+}
+.updated {
+    background: orange;
+}
+.completed {
+    background: green;
+}

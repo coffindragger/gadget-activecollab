@@ -1,0 +1,121 @@
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+        <script src="http://omnipotent.net/jquery.sparkline/1.6/jquery.sparkline.min.js"></script>
+        <script src="index.js"></script>
+        <script>
+
+
+
+        window.API_KEY = window.location.hash.replace('#','');
+
+
+        var projects = {};
+        var people_today = {};
+        function get_user_from_today(user_id, company_id) 
+        {
+            var user = people_today[user_id]
+            if (!user) {
+                user = people_today[user_id] = {
+                    'company_id': company_id,
+                    'user_id': user_id,
+                    'tickets_updated':0,
+                    'tickets_created':0,
+                    'tickets_completed':0,
+                }
+            }
+            return user
+        }
+
+
+        function fetch_project_tickets(project)
+        {
+            var how_long = 5*86400000;
+            function scan_tickets(tickets)
+            {
+                if (tickets) {
+                    for (var i=0; i < tickets.length; i++) {
+                        var ticket = tickets[i]
+
+                        var now = new Date().getTime();
+
+                        var up_on = new Date(ticket.updated_on)
+                        if (now - up_on.getTime() < how_long) {
+                            var user = get_user_from_today(ticket.updated_by_id, project.company_id)
+                            user.tickets_updated += 1;
+                        }
+                        up_on = new Date(ticket.completed_on)
+                        if (now - up_on.getTime() < how_long) {
+                            var user = get_user_from_today(ticket.completed_by_id, project.company_id)
+                            user.tickets_completed += 1;
+                        }
+                        up_on = new Date(ticket.created_on)
+                        if (now - up_on.getTime() < how_long) {
+                            var user = get_user_from_today(ticket.created_by_id, project.company_id)
+                            user.tickets_created += 1;
+                        }
+
+                    }
+                }
+            }
+            ac_api_fetch("project_tickets__"+project.id, API_KEY, 'projects/'+project.id+'/tickets', scan_tickets);
+            ac_api_fetch("project_tickets_archive__"+project.id, API_KEY, 'projects/'+project.id+'/tickets/archive', scan_tickets);
+            ac_api_fetch("project_milestones__"+project.id, API_KEY, 'projects/'+project.id+'/milestones', scan_tickets);
+            ac_api_fetch("project_milestones_archive__"+project.id, API_KEY, 'projects/'+project.id+'/milestones/archive', scan_tickets);
+            //ac_api_fetch("project_checklists__"+project.id, API_KEY, 'projects/'+project.id+'/checklists', scan_tickets);
+            //ac_api_fetch("project_checklists_archive__"+project.id, API_KEY, 'projects/'+project.id+'/checklists/archive', scan_tickets);
+        }
+
+
+        $(function() {
+
+
+            ac_api_fetch("projects__", API_KEY, 'projects', function(projects) {
+                for (var i=0; i < projects.length; i++) {
+                    var project = projects[i];
+                    fetch_project_tickets(project)
+                }
+            });
+
+            var leaderboard = []
+            for (var user_id in people_today) {
+                leaderboard.push( people_today[user_id] )
+            }
+            leaderboard.sort(function(a,b) {
+                var x = a.tickets_created + a.tickets_updated + a.tickets_completed
+                var y = b.tickets_created + b.tickets_updated + b.tickets_completed
+                return y - x
+            })
+
+            for (var i=0; i < leaderboard.length; i++) {
+                var user = leaderboard[i]
+
+
+                ac_api_fetch("person__"+user.user_id, API_KEY, 'people/'+user.company_id+'/users/'+user.user_id, function(person) {
+                    var $section = $('<section class="leader"/>')
+                    var unit = 5;
+
+                    $('#container').append($section)
+                    if (person.avatar_url.match(/default/)) {
+                        $section.append('<div class="avatar">'+person.first_name+'<br/>'+person.last_name+'</div>')
+                    }
+                    else {
+                        $section.append('<img class="avatar" src="'+person.avatar_url+'"/>')
+                    }
+
+                    var $bars = $('<div class="bars"/>')
+                    $bars.append('<div class="created" style="width: '+(1+user.tickets_created*unit)+'px;">');
+                    $bars.append('<div class="updated" style="width: '+(1+user.tickets_updated*unit)+'px;"/>');
+                    $bars.append('<div class="completed" style="width: '+(1+user.tickets_completed*unit)+'px;"/>');
+                    $section.append($bars);
+                    $section.append('<div style="clear: both"/>')
+                })
+            }
+
+        });
+        </script>
+        <link rel="stylesheet" href="index.css"/>
+    </head>
+    <body id="container">
+    </body>
+</html>
